@@ -1,6 +1,7 @@
 package checklinks
 
 import (
+	"crypto/tls"
 	"errors"
 	"fmt"
 	"net/http"
@@ -128,6 +129,9 @@ func CrawlPage(site *url.URL, timeout int, ok, ignore, fail bool) {
 
 	client := &http.Client{
 		Timeout: time.Duration(timeout) * time.Second,
+		Transport: &http.Transport{
+			TLSClientConfig: &tls.Config{InsecureSkipVerify: true},
+		},
 	}
 
 	go func() {
