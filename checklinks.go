@@ -13,7 +13,11 @@ import (
 )
 
 // Parallelism is the max. amount of HTTP requests open at any given time.
-const Parallelism = 64
+const (
+	Parallelism = 64
+
+	userAgent = "Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:98.0) Gecko/20100101 Firefox/98.0"
+)
 
 var errNotCrawlable = errors.New("not crawlable")
 
@@ -21,7 +25,11 @@ var errNotCrawlable = errors.New("not crawlable")
 // client, and returns its root (document) node. An error is returned if the
 // document cannot be fetched or parsed as HTML.
 func FetchDocument(url string, c *http.Client) (*html.Node, error) {
-	response, err := c.Get(url)
+	request, err := newGetRequest(url)
+	if err != nil {
+		return nil, err
+	}
+	response, err := c.Do(request)
 	if err != nil {
 		return nil, fmt.Errorf("fetch %s: %v", url, err)
 	}
@@ -184,13 +192,15 @@ type doneSink chan<- struct{}
 // unsuitable for further crawling and malformed links are reported. A message
 // is sent to the given done channel when the node has been processed.
 func ProcessNode(c *http.Client, l *Link, links linkSink, res resSink, done doneSink, t chan struct{}) {
+	defer func() {
+		done <- struct{}{}
+	}()
 	u := l.URL.String()
 	<-t
 	doc, err := FetchDocument(u, c)
 	t <- struct{}{}
 	if err != nil {
 		res <- &Result{Err: err, Link: l}
-		done <- struct{}{}
 		return
 	}
 	hrefs := ExtractTagAttribute(doc, "a", "href")
@@ -207,15 +217,22 @@ func ProcessNode(c *http.Client, l *Link, links linkSink, res resSink, done done
 		links <- link
 	}
 	res <- &Result{Err: nil, Link: l}
-	done <- struct{}{}
 }
 
 // ProcessLeaf uses the given http.Client to fetch the given link using a GET
 // request, and reports the result of that request. A message is sent to the
 // given done channel when the node has been processed.
 func ProcessLeaf(c *http.Client, l *Link, res resSink, done doneSink, t chan struct{}) {
+	defer func() {
+		done <- struct{}{}
+	}()
 	u := l.URL.String()
-	response, err := c.Get(u)
+	request, err := newGetRequest(u)
+	if err != nil {
+		res <- &Result{Err: err, Link: l}
+		return
+	}
+	response, err := c.Do(request)
 	if err != nil {
 		res <- &Result{Err: err, Link: l}
 	} else if response.StatusCode != http.StatusOK {
@@ -225,5 +242,13 @@ func ProcessLeaf(c *http.Client, l *Link, res resSink, done doneSink, t chan str
 	} else {
 		res <- &Result{nil, l}
 	}
-	done <- struct{}{}
+}
+
+func newGetRequest(url string) (*http.Request, error) {
+	request, err := http.NewRequest(http.MethodGet, url, nil)
+	if err != nil {
+		return nil, fmt.Errorf("prepare %s request to %s: %v", http.MethodGet, url, err)
+	}
+	request.Header.Add("User-Agent", userAgent)
+	return request, nil
 }
