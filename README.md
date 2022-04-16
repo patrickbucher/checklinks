@@ -52,3 +52,6 @@ the flags to control the output and request timeout:
 - [ ] consider using a fake user agent
 - [ ] parallelism as a flag
 - [ ] update Link.Site with every step, so that it can be reported as source URL
+- [ ] introduce Config struct for handing over the entire configuration from
+  the command line to the crawler function
+- [ ] introduce Channels struct for handing over channels to Process functions
