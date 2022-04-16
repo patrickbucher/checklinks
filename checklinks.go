@@ -69,8 +69,7 @@ func QualifyInternalURL(page, link *url.URL) *url.URL {
 	qualifiedURL := &url.URL{
 		Scheme: page.Scheme,
 		Host:   page.Host,
-		Path:   link.Path,
-		// TODO: Query Parameters?
+		Path:   page.Path + link.Path,
 	}
 	return qualifiedURL
 }
@@ -78,7 +77,7 @@ func QualifyInternalURL(page, link *url.URL) *url.URL {
 // Link represents a link (URL) in the context of a web site (Site).
 type Link struct {
 	URL  *url.URL
-	Site *url.URL
+	Orig *url.URL
 }
 
 // NewLink creates a Link from the given address. An error is returned, if the
@@ -88,13 +87,13 @@ func NewLink(address string, site *url.URL) (*Link, error) {
 	if err != nil {
 		return nil, err
 	}
-	return &Link{URL: u, Site: site}, nil
+	return &Link{URL: u, Orig: site}, nil
 }
 
 // IsInternal returns true if the link's URL points to the same domain as its
 // site, and false otherwise.
 func (l *Link) IsInternal() bool {
-	return l.URL.Hostname() == l.Site.Hostname() || l.URL.Hostname() == ""
+	return l.URL.Hostname() == l.Orig.Hostname() || l.URL.Hostname() == ""
 }
 
 // IsCrawlable returns true if the URL of the link has http(s) as the protocol,
@@ -114,10 +113,12 @@ type Result struct {
 // with OK if no error is present. The URL and error (if any) is contained in
 // the string.
 func (c Result) String() string {
+	to := c.Link.URL.String()
+	from := c.Link.Orig.String()
 	if c.Err != nil {
-		return fmt.Sprintf(`FAIL "%s": %v`, c.Link.URL.String(), c.Err)
+		return fmt.Sprintf(`FAIL "%s": from "%s" %v`, to, from, c.Err)
 	} else {
-		return fmt.Sprintf(`OK "%s"`, c.Link.URL.String())
+		return fmt.Sprintf(`OK "%s" from "%s"`, to, from)
 	}
 }
 
@@ -153,7 +154,7 @@ func CrawlPage(site *url.URL, timeout int, ok, ignore, fail bool) {
 					continue
 				}
 				if l.IsInternal() {
-					l.URL = QualifyInternalURL(site, l.URL)
+					l.URL = QualifyInternalURL(l.Orig, l.URL)
 					wg.Add(1)
 					go ProcessNode(client, l, links, results, done, tokens)
 				} else {
@@ -206,7 +207,7 @@ func ProcessNode(c *http.Client, l *Link, links linkSink, res resSink, done done
 	}
 	hrefs := ExtractTagAttribute(doc, "a", "href")
 	for _, href := range hrefs {
-		link, err := NewLink(href, l.Site)
+		link, err := NewLink(href, l.URL)
 		if err != nil {
 			res <- &Result{Err: err, Link: l}
 			continue
