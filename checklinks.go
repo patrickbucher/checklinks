@@ -3,6 +3,7 @@ package checklinks
 import (
 	"fmt"
 	"net/http"
+	"net/url"
 
 	"golang.org/x/net/html"
 )
@@ -42,4 +43,16 @@ func ExtractTagAttribute(node *html.Node, tagName, attrName string) []string {
 		attributes = append(attributes, childAttributes...)
 	}
 	return attributes
+}
+
+// QualifyInternalURL creates a new URL by merging scheme and host information
+// from the page URL with the rest of the URL indication from the link URL.
+func QualifyInternalURL(page, link *url.URL) *url.URL {
+	qualifiedURL := &url.URL{
+		Scheme: page.Scheme,
+		Host:   page.Host,
+		Path:   link.Path,
+		// TODO: Query Parameters?
+	}
+	return qualifiedURL
 }

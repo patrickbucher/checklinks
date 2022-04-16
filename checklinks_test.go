@@ -2,6 +2,7 @@ package checklinks
 
 import (
 	"bytes"
+	"net/url"
 	"testing"
 
 	"golang.org/x/net/html"
@@ -45,4 +46,14 @@ func isEqual[T comparable](a []T, b []T) bool {
 		}
 	}
 	return true
+}
+
+func TestQualifyInternalURL(t *testing.T) {
+	pageURL, _ := url.Parse("https://paedubucher.ch/")
+	linkURL, _ := url.Parse("/articles/eat-more-cheese.html")
+	combinedURL := QualifyInternalURL(pageURL, linkURL)
+	expectedURL := "https://paedubucher.ch/articles/eat-more-cheese.html"
+	if combinedURL.String() != expectedURL {
+		t.Errorf("expected '%s', got '%s'", expectedURL, combinedURL.String())
+	}
 }
