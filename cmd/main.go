@@ -14,6 +14,15 @@ import (
 	"github.com/patrickbucher/checklinks"
 )
 
+var (
+	timeout         = flag.Int("timeout", 10, "request timeout (in seconds)")
+	reportSucceeded = flag.Bool("success", false, "report succeeded links (OK)")
+	reportIgnored   = flag.Bool("ignored", false, "report ignored links (e.g. mailto:...)")
+	reportFailed    = flag.Bool("failed", true, "report failed links (e.g. 404)")
+
+	errNotCrawlable = errors.New("not crawlable")
+)
+
 func main() {
 	flag.Parse()
 	args := flag.Args()
@@ -30,7 +39,7 @@ func main() {
 		fmt.Fprintf(os.Stderr, "parse %s as URL: %v", pageAddr, err)
 		os.Exit(1)
 	}
-	crawlPage(pageURL, true, true, true)
+	crawlPage(pageURL)
 }
 
 type Link struct {
@@ -61,23 +70,21 @@ type Result struct {
 
 func (c Result) String() string {
 	if c.Err != nil {
-		return fmt.Sprintf("FAIL %s: %v", c.Link.URL.String(), c.Err)
+		return fmt.Sprintf(`FAIL "%s": %v`, c.Link.URL.String(), c.Err)
 	} else {
-		return fmt.Sprintf("OK %s", c.Link.URL.String())
+		return fmt.Sprintf(`OK "%s"`, c.Link.URL.String())
 	}
 }
 
 type Sink chan<- struct{}
 
-func crawlPage(site *url.URL, reportOK, reportIgnored, reportFailed bool) {
+func crawlPage(site *url.URL) {
 	var wg sync.WaitGroup
 	links := make(chan *Link)
 	results := make(chan *Result)
 	done := make(chan struct{})
 
-	client := &http.Client{
-		Timeout: 10 * time.Second,
-	}
+	client := &http.Client{Timeout: time.Duration(*timeout) * time.Second}
 
 	go func() {
 		visited := make(map[string]struct{})
@@ -95,10 +102,16 @@ func crawlPage(site *url.URL, reportOK, reportIgnored, reportFailed bool) {
 					go checkHead(client, l, results, done)
 				}
 			case result := <-results:
-				if result.Err != nil && reportFailed {
-					fmt.Println(result)
+				if result.Err != nil {
+					if errors.Is(result.Err, errNotCrawlable) {
+						if *reportIgnored {
+							fmt.Println(result)
+						}
+					} else if *reportFailed {
+						fmt.Println(result)
+					}
 				}
-				if result.Err == nil && reportOK {
+				if result.Err == nil && *reportSucceeded {
 					fmt.Println(result)
 				}
 			case <-done:
@@ -127,7 +140,7 @@ func extractLinks(c *http.Client, site *Link, links chan<- *Link, results chan<-
 			continue
 		}
 		if !link.IsCrawlable() {
-			results <- &Result{Err: errors.New("not crawlable"), Link: site}
+			results <- &Result{Err: errNotCrawlable, Link: site}
 			continue
 		}
 		links <- link
