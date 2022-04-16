@@ -21,6 +21,14 @@ automatically assumed.
     $ go build cmd/checklinks.go
     $ ./checklinks [url]
 
+## Install It
+
+Pick a tag (e.g. `v0.0.2`) and use `go install` to install that particular
+version:
+
+    $ go install github.com/patrickbucher/checklinks/cmd@v0.0.2
+    go: downloading github.com/patrickbucher/checklinks v0.0.2
+
 ## Flags
 
 The success and failure of each individual link is reported to the terminal. Use
