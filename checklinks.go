@@ -11,6 +11,9 @@ import (
 	"golang.org/x/net/html"
 )
 
+// Parallelism is the max. amount of HTTP requests open at any given time.
+const Parallelism = 64
+
 var errNotCrawlable = errors.New("not crawlable")
 
 // FetchDocument gets the document indicated by the given url using the given
@@ -108,9 +111,6 @@ func (c Result) String() string {
 	}
 }
 
-// Sink represents a writable channel to which empty structs are written.
-type Sink chan<- struct{}
-
 // CrawlPage crawls the given site's URL and reports successfully checked
 // links, ignored links, and failed links (according to the flags ok, ignore,
 // fail, respectively). The given timeout is used to limit the waiting time of
@@ -120,6 +120,11 @@ func CrawlPage(site *url.URL, timeout int, ok, ignore, fail bool) {
 	links := make(chan *Link)
 	results := make(chan *Result)
 	done := make(chan struct{})
+
+	tokens := make(chan struct{}, Parallelism)
+	for i := 0; i < Parallelism; i++ {
+		tokens <- struct{}{}
+	}
 
 	client := &http.Client{
 		Timeout: time.Duration(timeout) * time.Second,
@@ -131,15 +136,18 @@ func CrawlPage(site *url.URL, timeout int, ok, ignore, fail bool) {
 			select {
 			case l := <-links:
 				u := l.URL.String()
-				visited[u] = struct{}{}
+				if _, ok := visited[u]; ok {
+					continue
+				}
 				if l.IsInternal() {
 					l.URL = QualifyInternalURL(site, l.URL)
 					wg.Add(1)
-					go ProcessNode(client, l, links, results, done)
+					go ProcessNode(client, l, links, results, done, tokens)
 				} else {
 					wg.Add(1)
-					go ProcessLeaf(client, l, results, done)
+					go ProcessLeaf(client, l, results, done, tokens)
 				}
+				visited[u] = struct{}{}
 			case result := <-results:
 				if result.Err != nil {
 					if errors.Is(result.Err, errNotCrawlable) {
@@ -163,32 +171,38 @@ func CrawlPage(site *url.URL, timeout int, ok, ignore, fail bool) {
 	wg.Wait()
 }
 
-// ProcessNode uses the given http.Client to fetch the given site, and reports
+type linkSink chan<- *Link
+type resSink chan<- *Result
+type doneSink chan<- struct{}
+
+// ProcessNode uses the given http.Client to fetch the given link, and reports
 // the extracted links on the page (indicated by <a href="...">). Links
 // unsuitable for further crawling and malformed links are reported. A message
 // is sent to the given done channel when the node has been processed.
-func ProcessNode(c *http.Client, site *Link, links chan<- *Link, results chan<- *Result, done Sink) {
-	u := site.URL.String()
+func ProcessNode(c *http.Client, l *Link, links linkSink, res resSink, done doneSink, t chan struct{}) {
+	u := l.URL.String()
+	<-t
 	doc, err := FetchDocument(u, c)
+	t <- struct{}{}
 	if err != nil {
-		results <- &Result{Err: err, Link: site}
+		res <- &Result{Err: err, Link: l}
 		done <- struct{}{}
 		return
 	}
 	hrefs := ExtractTagAttribute(doc, "a", "href")
 	for _, href := range hrefs {
-		link, err := NewLink(href, site.Site)
+		link, err := NewLink(href, l.Site)
 		if err != nil {
-			results <- &Result{Err: err, Link: site}
+			res <- &Result{Err: err, Link: l}
 			continue
 		}
 		if !link.IsCrawlable() {
-			results <- &Result{Err: errNotCrawlable, Link: site}
+			res <- &Result{Err: errNotCrawlable, Link: l}
 			continue
 		}
 		links <- link
 	}
-	results <- &Result{Err: nil, Link: site}
+	res <- &Result{Err: nil, Link: l}
 	done <- struct{}{}
 }
 
@@ -196,31 +210,36 @@ func ProcessNode(c *http.Client, site *Link, links chan<- *Link, results chan<- 
 // request, and reports the result of that request. If HEAD is not supported,
 // GET is tried in addition. A message is sent to the given done channel when
 // the node has been processed.
-func ProcessLeaf(c *http.Client, link *Link, results chan<- *Result, done chan<- struct{}) {
-	u := link.URL.String()
-	response, err := headOrGet(c, link.URL)
+func ProcessLeaf(c *http.Client, l *Link, res resSink, done doneSink, t chan struct{}) {
+	u := l.URL.String()
+	response, err := headOrGet(c, l.URL, t)
 	if err != nil {
-		results <- &Result{Err: err, Link: link}
+		res <- &Result{Err: err, Link: l}
 	} else if response.StatusCode != http.StatusOK {
 		statusCode := response.StatusCode
 		statusText := http.StatusText(statusCode)
-		results <- &Result{fmt.Errorf("HEAD %d %s %s", statusCode, statusText, u), link}
+		res <- &Result{fmt.Errorf("HEAD %d %s %s", statusCode, statusText, u), l}
 	} else {
-		results <- &Result{nil, link}
+		res <- &Result{nil, l}
 	}
 	done <- struct{}{}
 }
 
-func headOrGet(c *http.Client, u *url.URL) (*http.Response, error) {
+func headOrGet(c *http.Client, u *url.URL, t chan struct{}) (*http.Response, error) {
+	<-t
 	response, err := c.Head(u.String())
+	t <- struct{}{}
 	if err != nil {
 		return nil, fmt.Errorf("HEAD %v %s", err, u.String())
 	}
 	if response.StatusCode == http.StatusMethodNotAllowed {
+		<-t
 		response, err = c.Get(u.String())
+		t <- struct{}{}
 		if err != nil {
 			return nil, fmt.Errorf("GET %v %s", err, u.String())
 		}
+		defer response.Body.Close()
 	}
 	return response, nil
 }
