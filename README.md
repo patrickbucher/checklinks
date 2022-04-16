@@ -41,7 +41,6 @@ the flags to control the output and request timeout:
 
 ## TODO
 
-- [ ] consider using a fake user agent
 - [ ] parallelism as a flag
 - [ ] update Link.Site with every step, so that it can be reported as source URL
 - [ ] introduce Config struct for handing over the entire configuration from
