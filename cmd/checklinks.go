@@ -11,10 +11,10 @@ import (
 )
 
 var (
-	timeout         = flag.Int("timeout", 10, "request timeout (in seconds)")
-	reportSucceeded = flag.Bool("success", false, "report succeeded links (OK)")
-	reportIgnored   = flag.Bool("ignored", false, "report ignored links (e.g. mailto:...)")
-	reportFailed    = flag.Bool("failed", true, "report failed links (e.g. 404)")
+	timeout       = flag.Int("timeout", 10, "request timeout (in seconds)")
+	showSucceeded = flag.Bool("success", false, "report succeeded links (OK)")
+	showIgnored   = flag.Bool("ignored", false, "report ignored links (e.g. mailto:...)")
+	hideFailed    = flag.Bool("nofailed", false, "do NOT report failed links (e.g. 404)")
 )
 
 func main() {
@@ -33,5 +33,5 @@ func main() {
 		fmt.Fprintf(os.Stderr, "parse %s as URL: %v", pageAddr, err)
 		os.Exit(1)
 	}
-	checklinks.CrawlPage(pageURL, *timeout, *reportSucceeded, *reportIgnored, *reportFailed)
+	checklinks.CrawlPage(pageURL, *timeout, *showSucceeded, *showIgnored, !*hideFailed)
 }

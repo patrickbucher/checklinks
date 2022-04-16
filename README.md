@@ -30,10 +30,10 @@ the flags to control the output and request timeout:
 
     $ ./checklinks -help
     Usage of ./checklinks:
-      -failed
-            report failed links (e.g. 404) (default true)
       -ignored
             report ignored links (e.g. mailto:...)
+      -nofailed
+            do NOT report failed links (e.g. 404)
       -success
             report succeeded links (OK)
       -timeout int
