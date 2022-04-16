@@ -46,3 +46,8 @@ the flags to control the output and request timeout:
             report succeeded links (OK)
       -timeout int
             request timeout (in seconds) (default 10)
+
+## TODO
+
+- [ ] consider using a fake user agent
+- [ ] parallelism as a flag
