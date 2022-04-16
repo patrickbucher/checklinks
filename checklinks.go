@@ -212,34 +212,34 @@ func ProcessNode(c *http.Client, l *Link, links linkSink, res resSink, done done
 // the node has been processed.
 func ProcessLeaf(c *http.Client, l *Link, res resSink, done doneSink, t chan struct{}) {
 	u := l.URL.String()
-	response, err := headOrGet(c, l.URL, t)
+	response, method, err := headOrGet(c, l.URL, t)
 	if err != nil {
 		res <- &Result{Err: err, Link: l}
 	} else if response.StatusCode != http.StatusOK {
 		statusCode := response.StatusCode
 		statusText := http.StatusText(statusCode)
-		res <- &Result{fmt.Errorf("HEAD %d %s %s", statusCode, statusText, u), l}
+		res <- &Result{fmt.Errorf("%s %d %s %s", method, statusCode, statusText, u), l}
 	} else {
 		res <- &Result{nil, l}
 	}
 	done <- struct{}{}
 }
 
-func headOrGet(c *http.Client, u *url.URL, t chan struct{}) (*http.Response, error) {
+func headOrGet(c *http.Client, u *url.URL, t chan struct{}) (*http.Response, string, error) {
 	<-t
 	response, err := c.Head(u.String())
 	t <- struct{}{}
 	if err != nil {
-		return nil, fmt.Errorf("HEAD %v %s", err, u.String())
+		return nil, "HEAD", fmt.Errorf("HEAD %v %s", err, u.String())
 	}
 	if response.StatusCode == http.StatusMethodNotAllowed {
 		<-t
 		response, err = c.Get(u.String())
 		t <- struct{}{}
 		if err != nil {
-			return nil, fmt.Errorf("GET %v %s", err, u.String())
+			return nil, "GET", fmt.Errorf("GET %v %s", err, u.String())
 		}
 		defer response.Body.Close()
 	}
-	return response, nil
+	return response, "GET", nil
 }
