@@ -12,11 +12,12 @@ import (
 	"golang.org/x/net/html"
 )
 
-// Parallelism is the max. amount of HTTP requests open at any given time.
 const (
+	// Parallelism is the max. amount of HTTP requests open at any given time.
 	Parallelism = 64
 
-	userAgent = "Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:98.0) Gecko/20100101 Firefox/98.0"
+	// UserAgent defines a value used for the "User-Agent" header to avoid being blocked.
+	UserAgent = "Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:98.0) Gecko/20100101 Firefox/98.0"
 )
 
 var errNotCrawlable = errors.New("not crawlable")
@@ -249,6 +250,6 @@ func newGetRequest(url string) (*http.Request, error) {
 	if err != nil {
 		return nil, fmt.Errorf("prepare %s request to %s: %v", http.MethodGet, url, err)
 	}
-	request.Header.Add("User-Agent", userAgent)
+	request.Header.Add("User-Agent", UserAgent)
 	return request, nil
 }
