@@ -8,11 +8,11 @@ import (
 	"golang.org/x/net/html"
 )
 
-// FetchDocument gets the document indicated by the given url, and returns its
-// root (document) node. An error is returned if the document cannot be fetched
-// or parsed as HTML.
-func FetchDocument(url string) (*html.Node, error) {
-	response, err := http.Get(url)
+// FetchDocument gets the document indicated by the given url using the given
+// client, and returns its root (document) node. An error is returned if the
+// document cannot be fetched or parsed as HTML.
+func FetchDocument(url string, c *http.Client) (*html.Node, error) {
+	response, err := c.Get(url)
 	if err != nil {
 		return nil, fmt.Errorf("fetch %s: %v", url, err)
 	}
