@@ -51,3 +51,4 @@ the flags to control the output and request timeout:
 
 - [ ] consider using a fake user agent
 - [ ] parallelism as a flag
+- [ ] update Link.Site with every step, so that it can be reported as source URL
