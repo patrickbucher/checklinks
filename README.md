@@ -7,7 +7,9 @@ Internal links (pointing to another page on the same site) are checked using a
 `GET` request.
 
 External links (pointing to another domain) are checked using a `HEAD` request
-to save traffic. (Those links are not followed any further.)
+to save traffic; an additional `GET` request is attempted, if the initial `HEAD`
+requests fails with status 405 (Method not Alloewd). Those extarnal links are
+not followed any further.
 
 ## Run It
 
