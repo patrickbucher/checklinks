@@ -210,40 +210,20 @@ func ProcessNode(c *http.Client, l *Link, links linkSink, res resSink, done done
 	done <- struct{}{}
 }
 
-// ProcessLeaf uses the given http.Client to fetch the given link using a HEAD
-// request, and reports the result of that request. If HEAD is not supported,
-// GET is tried in addition. A message is sent to the given done channel when
-// the node has been processed.
+// ProcessLeaf uses the given http.Client to fetch the given link using a GET
+// request, and reports the result of that request. A message is sent to the
+// given done channel when the node has been processed.
 func ProcessLeaf(c *http.Client, l *Link, res resSink, done doneSink, t chan struct{}) {
 	u := l.URL.String()
-	response, method, err := headOrGet(c, l.URL, t)
+	response, err := c.Get(u)
 	if err != nil {
 		res <- &Result{Err: err, Link: l}
 	} else if response.StatusCode != http.StatusOK {
 		statusCode := response.StatusCode
 		statusText := http.StatusText(statusCode)
-		res <- &Result{fmt.Errorf("%s %d %s %s", method, statusCode, statusText, u), l}
+		res <- &Result{fmt.Errorf("GET %d %s %s", statusCode, statusText, u), l}
 	} else {
 		res <- &Result{nil, l}
 	}
 	done <- struct{}{}
-}
-
-func headOrGet(c *http.Client, u *url.URL, t chan struct{}) (*http.Response, string, error) {
-	<-t
-	response, err := c.Head(u.String())
-	t <- struct{}{}
-	if err != nil {
-		return nil, "HEAD", fmt.Errorf("HEAD %v %s", err, u.String())
-	}
-	if response.StatusCode == http.StatusMethodNotAllowed {
-		<-t
-		response, err = c.Get(u.String())
-		t <- struct{}{}
-		if err != nil {
-			return nil, "GET", fmt.Errorf("GET %v %s", err, u.String())
-		}
-		defer response.Body.Close()
-	}
-	return response, "GET", nil
 }

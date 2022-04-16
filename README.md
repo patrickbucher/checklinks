@@ -1,15 +1,7 @@
 # `checklinks`: Crawl a Website for Dead URLs
 
 The `checklinks` utility takes a single website address and crawls that page for
-links (i.e. `href` attributes of `<a>` tags).
-
-Internal links (pointing to another page on the same site) are checked using a
-`GET` request.
-
-External links (pointing to another domain) are checked using a `HEAD` request
-to save traffic; an additional `GET` request is attempted, if the initial `HEAD`
-requests fails with status 405 (Method not Alloewd). Those extarnal links are
-not followed any further.
+links (i.e. `href` attributes of `<a>` tags). TLS issues are ignored.
 
 ## Run It
 
@@ -55,3 +47,4 @@ the flags to control the output and request timeout:
 - [ ] introduce Config struct for handing over the entire configuration from
   the command line to the crawler function
 - [ ] introduce Channels struct for handing over channels to Process functions
+- [ ] additional flag for secure/insecure TLS
