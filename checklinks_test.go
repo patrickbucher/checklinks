@@ -2,6 +2,8 @@ package checklinks
 
 import (
 	"bytes"
+	"context"
+	"net/http"
 	"net/url"
 	"testing"
 
@@ -85,4 +87,24 @@ func TestQualifyInternalRootURL(t *testing.T) {
 			t.Errorf("expected '%s', got '%s'", expectedURL, combinedURL.String())
 		}
 	}
+}
+
+func TestLocalDemoPage(t *testing.T) {
+	fs := http.FileServer(http.Dir("demopage"))
+	srv := http.Server{
+		Addr:    "0.0.0.0:8000",
+		Handler: fs,
+	}
+	http.Handle("/", fs)
+	go srv.ListenAndServe()
+
+	done := make(chan struct{})
+	go func() {
+		pageURL, _ := url.Parse("http://localhost:8000")
+		CrawlPage(pageURL, 1, true, true, true)
+		done <- struct{}{}
+	}()
+
+	<-done
+	srv.Shutdown(context.TODO())
 }
