@@ -17,11 +17,11 @@ automatically assumed.
 
 ## Install It
 
-Pick a tag (e.g. `v0.0.2`) and use `go install` to install that particular
+Pick a tag (e.g. `v0.0.7`) and use `go install` to install that particular
 version:
 
-    $ go install github.com/patrickbucher/checklinks/cmd@v0.0.2
-    go: downloading github.com/patrickbucher/checklinks v0.0.2
+    $ go install github.com/patrickbucher/checklinks/cmd@v0.0.7
+    go: downloading github.com/patrickbucher/checklinks v0.0.7
 
 ## Flags
 
@@ -41,9 +41,11 @@ the flags to control the output and request timeout:
 
 ## TODO
 
-- [ ] user agent as an optional flag
-- [ ] parallelism as a flag
-- [ ] introduce Config struct for handing over the entire configuration from
-  the command line to the crawler function
-- [ ] introduce Channels struct for handing over channels to Process functions
-- [ ] additional flag for secure/insecure TLS
+- [ ] introduce command line flags
+    - [ ] user agent (optional)
+    - [ ] level of parallelism (optional)
+    - [ ] allow insecure SSL/TLS
+- [ ] refactor code
+    - [ ] introduce Config struct for handing over the entire configuration
+      from the command line to the crawler function
+    - [ ] introduce Channels struct for handing over channels to Process functions
