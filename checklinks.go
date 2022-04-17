@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"net/http"
 	"net/url"
+	"strings"
 	"sync"
 	"time"
 
@@ -66,10 +67,20 @@ func ExtractTagAttribute(node *html.Node, tagName, attrName string) []string {
 // QualifyInternalURL creates a new URL by merging scheme and host information
 // from the page URL with the rest of the URL indication from the link URL.
 func QualifyInternalURL(page, link *url.URL) *url.URL {
+	var path string
+	if strings.HasPrefix(link.Path, "/") {
+		path = link.Path
+	} else {
+		if strings.HasSuffix(page.Path, "/") {
+			path = page.Path + link.Path
+		} else {
+			path = page.Path + "/" + link.Path
+		}
+	}
 	qualifiedURL := &url.URL{
 		Scheme: page.Scheme,
 		Host:   page.Host,
-		Path:   page.Path + link.Path,
+		Path:   path,
 	}
 	return qualifiedURL
 }

@@ -48,12 +48,41 @@ func isEqual[T comparable](a []T, b []T) bool {
 	return true
 }
 
-func TestQualifyInternalURL(t *testing.T) {
-	pageURL, _ := url.Parse("https://paedubucher.ch/")
-	linkURL, _ := url.Parse("/articles/eat-more-cheese.html")
-	combinedURL := QualifyInternalURL(pageURL, linkURL)
-	expectedURL := "https://paedubucher.ch/articles/eat-more-cheese.html"
-	if combinedURL.String() != expectedURL {
-		t.Errorf("expected '%s', got '%s'", expectedURL, combinedURL.String())
+var qualifyURLTests = []struct {
+	pageURL     string
+	linkURL     string
+	expectedURL string
+}{
+	{
+		"https://paedubucher.ch/",
+		"/articles/eat-more-cheese.html",
+		"https://paedubucher.ch/articles/eat-more-cheese.html",
+	},
+	{
+		"https://paedubucher.ch",
+		"/articles/eat-more-cheese.html",
+		"https://paedubucher.ch/articles/eat-more-cheese.html",
+	},
+	{
+		"https://paedubucher.ch/articles/drink-more-milk/",
+		"milk-manifesto.html",
+		"https://paedubucher.ch/articles/drink-more-milk/milk-manifesto.html",
+	},
+	{
+		"https://paedubucher.ch/articles/drink-more-milk",
+		"milk-manifesto.html",
+		"https://paedubucher.ch/articles/drink-more-milk/milk-manifesto.html",
+	},
+}
+
+func TestQualifyInternalRootURL(t *testing.T) {
+	for _, testCase := range qualifyURLTests {
+		pageURL, _ := url.Parse(testCase.pageURL)
+		linkURL, _ := url.Parse(testCase.linkURL)
+		combinedURL := QualifyInternalURL(pageURL, linkURL)
+		expectedURL := testCase.expectedURL
+		if combinedURL.String() != expectedURL {
+			t.Errorf("expected '%s', got '%s'", expectedURL, combinedURL.String())
+		}
 	}
 }
