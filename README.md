@@ -17,11 +17,12 @@ automatically assumed.
 
 ## Install It
 
-Pick a tag (e.g. `v0.0.7`) and use `go install` to install that particular
+Pick a tag (e.g. `v0.0.8`) and use `go install` to install that particular
 version:
 
-    $ go install github.com/patrickbucher/checklinks/cmd@v0.0.7
-    go: downloading github.com/patrickbucher/checklinks v0.0.7
+    $ go install github.com/patrickbucher/checklinks/checklinks@v0.0.8
+    go: downloading github.com/patrickbucher/checklinks v0.0.8
+    go: downloading golang.org/x/net v0.0.0-20220412020605-290c469a71a5
 
 ## Flags
 
